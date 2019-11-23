@@ -43,7 +43,7 @@ VlGMM * fv_codeBook(float *data, int numData, int dimension, int numComponents){
     return gmm;
 }
 
-float * vl_fv(VlGMM * gmm, float *dataToEncode, int numDataToEncode){
+float * fv_encode(VlGMM * gmm, float *dataToEncode, int numDataToEncode){
 
     float * means ;
     float * covariances ;
