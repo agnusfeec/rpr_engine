@@ -34,6 +34,46 @@ int vl_test(){
     return 0;
 }
 
+VlGMM * fv_codeBook(float *data, int numData, int dimension, int numComponents){
+    // create a GMM object and cluster input data to get means, covariances
+    // and priors of the estimated mixture
+    VlGMM *gmm = vl_gmm_new (VL_TYPE_FLOAT, dimension, numComponents);
+    vl_gmm_cluster (gmm, data, numData);
+
+    return gmm;
+}
+
+float * vl_fv(VlGMM * gmm, float *dataToEncode, int numDataToEncode){
+
+    float * means ;
+    float * covariances ;
+    float * priors ;
+    //float * posteriors ;
+    float * enc;
+
+    int numComponents = vl_gmm_get_num_clusters(gmm);
+    int dimension = vl_gmm_get_dimension(gmm);
+
+    // allocate space for the encoding
+    enc = (float *)vl_malloc(sizeof(float) * 2 * dimension * numComponents);
+
+    // run fisher encoding
+    means = (float *)vl_gmm_get_means(gmm);
+    covariances = (float *)vl_gmm_get_covariances(gmm);
+    priors = (float *)vl_gmm_get_priors(gmm);
+
+    vl_fisher_encode
+        (enc, VL_TYPE_FLOAT,
+         means, dimension, numComponents,
+         covariances,
+         priors,
+         dataToEncode, numDataToEncode,
+         VL_FISHER_FLAG_IMPROVED
+         );
+
+    return enc;
+}
+
 float * vl_fv(float *data, int numData, int dimension, int numComponents, float *dataToEncode, int numDataToEncode){
 
     float * means ;
