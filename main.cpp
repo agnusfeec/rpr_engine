@@ -54,6 +54,8 @@ float * fv_encode(VlGMM * gmm, float *dataToEncode, int numDataToEncode){
     int numComponents = vl_gmm_get_num_clusters(gmm);
     int dimension = vl_gmm_get_dimension(gmm);
 
+    std::cout << numComponents << " " << dimension << "\n";
+
     // allocate space for the encoding
     enc = (float *)vl_malloc(sizeof(float) * 2 * dimension * numComponents);
 
@@ -62,7 +64,7 @@ float * fv_encode(VlGMM * gmm, float *dataToEncode, int numDataToEncode){
     covariances = (float *)vl_gmm_get_covariances(gmm);
     priors = (float *)vl_gmm_get_priors(gmm);
 
-    vl_fisher_encode
+    vl_size n = vl_fisher_encode
         (enc, VL_TYPE_FLOAT,
          means, dimension, numComponents,
          covariances,
@@ -70,6 +72,8 @@ float * fv_encode(VlGMM * gmm, float *dataToEncode, int numDataToEncode){
          dataToEncode, numDataToEncode,
          VL_FISHER_FLAG_IMPROVED
          );
+
+    std::cout << n << "\n";
 
     return enc;
 }
@@ -117,6 +121,8 @@ float * mat2vec(Mat m){
     for(int c=0; c<m.cols; c++){
         for(int r=0; r<m.rows; r++){
             d[i++] = m.at<float>(r,c);
+            //std::cout << "(" << d[i] << " " << m.at<float>(r,c) << ") ";
+            //i++;
         }
     }
 
@@ -223,15 +229,17 @@ int main(int argc, char *argv[])
     kp_write(keypoints1);
     ds_write(descriptors1);
 
-    float * enc = vl_fv(mat2vec(descriptors1), descriptors1.rows*descriptors1.cols, 1,
-          descriptors1.cols, mat2vec(descriptors2), descriptors2.rows*descriptors2.cols);
+    VlGMM * gmm = fv_codeBook(mat2vec(descriptors1),descriptors1.rows, descriptors1.cols,1);
+    float * enc = fv_encode(gmm, mat2vec(descriptors2), descriptors2.rows);
+
+    //float * enc = vl_fv(mat2vec(descriptors1), descriptors1.rows*descriptors1.cols,
+    //      descriptors1.cols, 1, mat2vec(descriptors2), descriptors2.rows*descriptors2.cols);
 
     for(int i=0; i<128; i++) {
         std::cout << enc[i] << " ";
     }
-    std::cout << "\n";
-    enc = vl_fv(mat2vec(descriptors1), descriptors1.rows*descriptors1.cols, 1,
-              descriptors1.cols, mat2vec(descriptors1), descriptors1.rows*descriptors1.cols);
+    std::cout << "\n\n";
+    enc = fv_encode(gmm, mat2vec(descriptors1), descriptors1.rows);
 
     for(int i=0; i<128; i++) {
         std::cout << enc[i] << " ";
