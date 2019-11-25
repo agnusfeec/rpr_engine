@@ -14,8 +14,15 @@ DEFINES += QT_DEPRECATED_WARNINGS
 # You can also select to disable deprecated APIs only up to a certain version of Qt.
 #DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
 
-SOURCES += main.cpp
+SOURCES += main.cpp \
+    feature.cpp \
+    fvector.cpp
 
 INCLUDEPATH += /usr/local/include/opencv /home/agnus/Documentos/vlfeat-0.9.21/
 LIBS += -L/usr/local/lib -lopencv_core -lopencv_imgcodecs -lopencv_highgui -lopencv_features2d -lopencv_xfeatures2d
 LIBS += -L/home/agnus/Documentos/vlfeat-0.9.21/bin/glnxa64/bin/a64/ -lvl
+
+HEADERS += \
+    feature.h \
+    fvector.h \
+    util.h

@@ -19,6 +19,10 @@ extern "C" {
   #include <vl/kmeans.h>
 }
 
+#include "feature.h"
+#include "fvector.h"
+#include "util.h"
+
 using namespace cv;
 using namespace cv::xfeatures2d;
 using std::cout;
@@ -34,140 +38,14 @@ int vl_test(){
     return 0;
 }
 
-VlGMM * fv_codeBook(float *data, int numData, int dimension, int numComponents){
-    // create a GMM object and cluster input data to get means, covariances
-    // and priors of the estimated mixture
-    VlGMM *gmm = vl_gmm_new (VL_TYPE_FLOAT, dimension, numComponents);
-    vl_gmm_cluster (gmm, data, numData);
-
-    return gmm;
-}
-
-float * fv_encode(VlGMM * gmm, float *dataToEncode, int numDataToEncode){
-
-    float * means ;
-    float * covariances ;
-    float * priors ;
-    //float * posteriors ;
-    float * enc;
-
-    int numComponents = vl_gmm_get_num_clusters(gmm);
-    int dimension = vl_gmm_get_dimension(gmm);
-
-    std::cout << numComponents << " " << dimension << "\n";
-
-    // allocate space for the encoding
-    enc = (float *)vl_malloc(sizeof(float) * 2 * dimension * numComponents);
-
-    // run fisher encoding
-    means = (float *)vl_gmm_get_means(gmm);
-    covariances = (float *)vl_gmm_get_covariances(gmm);
-    priors = (float *)vl_gmm_get_priors(gmm);
-
-    vl_size n = vl_fisher_encode
-        (enc, VL_TYPE_FLOAT,
-         means, dimension, numComponents,
-         covariances,
-         priors,
-         dataToEncode, numDataToEncode,
-         VL_FISHER_FLAG_IMPROVED
-         );
-
-    std::cout << n << "\n";
-
-    return enc;
-}
-
-float * vl_fv(float *data, int numData, int dimension, int numComponents, float *dataToEncode, int numDataToEncode){
-
-    float * means ;
-    float * covariances ;
-    float * priors ;
-    //float * posteriors ;
-    float * enc;
-
-    // create a GMM object and cluster input data to get means, covariances
-    // and priors of the estimated mixture
-    VlGMM *gmm = vl_gmm_new (VL_TYPE_FLOAT, dimension, numComponents);
-    vl_gmm_cluster (gmm, data, numData);
-
-    // allocate space for the encoding
-    enc = (float *)vl_malloc(sizeof(float) * 2 * dimension * numComponents);
-
-    // run fisher encoding
-    means = (float *)vl_gmm_get_means(gmm);
-    covariances = (float *)vl_gmm_get_covariances(gmm);
-    priors = (float *)vl_gmm_get_priors(gmm);
-
-    vl_fisher_encode
-        (enc, VL_TYPE_FLOAT,
-         means, dimension, numComponents,
-         covariances,
-         priors,
-         dataToEncode, numDataToEncode,
-         VL_FISHER_FLAG_IMPROVED
-         );
-
-    return enc;
-}
-
-// matrices in VLFeat are stored in memory in column major order.
-// http://www.vlfeat.org/api/conventions.html#conventions-storage
-float * mat2vec(Mat m){
-    int i = 0;
-    float * d = (float *)malloc(m.rows*m.cols*sizeof(float));
-    // testar sucesso da alocação
-
-    for(int c=0; c<m.cols; c++){
-        for(int r=0; r<m.rows; r++){
-            d[i++] = m.at<float>(r,c);
-            //std::cout << "(" << d[i] << " " << m.at<float>(r,c) << ") ";
-            //i++;
-        }
-    }
-
-    return d;
-}
-
-int kp_write(std::vector<KeyPoint> keypoints){
-     std::ofstream myfile ("keypoints.csv");
-     if (myfile.is_open())
-     {
-       myfile << "kaze " << keypoints.size() << "\n";
-
-       for(KeyPoint kp : keypoints) {
-           // float x, float y, float _size, float _angle=-1, float _response=0, int _octave=0, int _class_id=-1
-           myfile << kp.pt.x << " " << kp.pt.y << " " << kp.size << " " << kp.angle << " ";
-           myfile << kp.response << " " << kp.octave << " " << kp.class_id << "\n";
-       }
-       myfile.close();
-     }
-     return 0;
-}
-
-int ds_write(Mat descriptors){
-     std::ofstream myfile ("descriptors.csv");
-     if (myfile.is_open())
-     {
-       myfile << "kaze " << descriptors.rows << " " << descriptors.cols << "\n";
-
-       for(int r=0; r<descriptors.rows; r++){
-           for(int c=0; c<descriptors.cols-1; c++){
-               myfile << descriptors.at<float>(r,c) << " ";
-           }
-           myfile << descriptors.at<float>(r,descriptors.cols) << "\n";
-       }
-
-       myfile.close();
-     }
-     return 0;
-}
-
 int main(int argc, char *argv[])
 {
     //QCoreApplication a(argc, argv);
 
     //return a.exec();
+
+    feature ft = feature();
+    fvector fisher = fvector();
 
     vl_test();
 
@@ -226,26 +104,29 @@ int main(int argc, char *argv[])
     //-- Show detected matches
     imshow("Matches", img_matches );
 
-    kp_write(keypoints1);
-    ds_write(descriptors1);
+    ft.kp_write(keypoints1);
+    ft.ds_write(descriptors1);
 
-    VlGMM * gmm = fv_codeBook(mat2vec(descriptors1),descriptors1.rows, descriptors1.cols,1);
-    float * enc = fv_encode(gmm, mat2vec(descriptors2), descriptors2.rows);
-
-    //float * enc = vl_fv(mat2vec(descriptors1), descriptors1.rows*descriptors1.cols,
-    //      descriptors1.cols, 1, mat2vec(descriptors2), descriptors2.rows*descriptors2.cols);
+    VlGMM * gmm = fisher.codeBook(mat2vec(descriptors1), descriptors1.rows, descriptors1.cols,1);
+    float * enc = fisher.encode(gmm, mat2vec(descriptors2), descriptors2.rows);
 
     for(int i=0; i<128; i++) {
         std::cout << enc[i] << " ";
     }
     std::cout << "\n\n";
-    enc = fv_encode(gmm, mat2vec(descriptors1), descriptors1.rows);
+    enc = fisher.encode(gmm, mat2vec(descriptors1), descriptors1.rows);
 
     for(int i=0; i<128; i++) {
         std::cout << enc[i] << " ";
     }
 
     std::cout << "\n";
+
+    descriptors1 = ft.ds_load();
+
+    fisher.gmm_write(gmm);
+
+    gmm = fisher.gmm_load();
 
     waitKey();
     return 0;
