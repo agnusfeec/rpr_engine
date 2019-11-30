@@ -10,13 +10,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <vector>
 
 extern "C" {
-  #include <vl/generic.h>
-  #include <vl/fisher.h>
-  #include <vl/gmm.h>
-  #include <vl/mathop.h>
-  #include <vl/kmeans.h>
+#include <vl/generic.h>
+#include <vl/fisher.h>
+#include <vl/gmm.h>
+#include <vl/mathop.h>
+#include <vl/kmeans.h>
 }
 
 #include "feature.h"
@@ -29,13 +30,68 @@ using std::cout;
 using std::endl;
 
 const char* keys =
-    "{ help h   |                  | Print help message. }"
-    "{ input1 i1| tattoo-god.jpg   | Path to input image 1. }"
-    "{ input2 i2| tatoo_01.jpg     | Path to input image 2. }";
+        "{ help h   |                  | Print help message. }"
+        "{ input1 i1| tattoo-god.jpg   | Path to input image 1. }"
+        "{ input2 i2| tatoo_01.jpg     | Path to input image 2. }";
 
-int vl_test(){
-    VL_PRINT ("Hello world!\n") ;
-    return 0;
+struct timg
+{
+    std::string name;
+    unsigned int n_ds, dimension;
+};
+
+struct tfiles
+{
+    float * data;
+    unsigned int tot_ds;
+    std::vector <timg> files;
+};
+
+tfiles ds_storage;
+
+void load_files(tfiles &ds_storage, std::string filename){
+    ds_storage.tot_ds = 0;
+    std::string path = "/Projeto/dataset/tatt-c/tattoo_identification/test/";
+    std::string path_desc = "/Projeto/dataset/descriptors/";
+    std::ifstream images;
+    images.open (path + filename);
+    if (images.is_open())
+    {
+        do {
+            std::string file;
+            images >> file;
+            if(images.good()){
+                std::string descfile = file.substr(file.find("/")+1,file.find(".")-file.find("/")-1) + "__kaze_des.csv";
+                std::string type;
+                unsigned int qt, dimension;
+                //std::cout << path_desc + descfile << "\n";
+                std::ifstream datfiles(path_desc + descfile);
+                //std::ifstream datfiles;
+
+                datfiles.open(path_desc + descfile);
+                if (datfiles.is_open()){
+                    datfiles >> type >> qt >> dimension;
+                    //std::cout << type << " " << qt << " " << dimension << "\n";
+                    timg obj = {file,qt,dimension};
+                    ds_storage.files.push_back(obj);
+                    ds_storage.tot_ds += qt;
+                }else {
+                    std::cerr << "Erro opening file of descriptors!" << std::endl;
+                    exit(1);
+                }
+                datfiles.close();
+
+            } else {
+                if(!images.eof()){
+                    std::cerr << "Erro opening file list of images!" << std::endl;
+                    exit(1);
+                }
+            }
+        } while(images.good());
+    }
+    images.close();
+    std::cout << ds_storage.tot_ds << "\n";
+    //std::cout << ds_storage.files[0].name << " " << ds_storage.files[0].n_ds << " " << ds_storage.files[0].dimension << "\n";
 }
 
 int main(int argc, char *argv[])
@@ -46,8 +102,6 @@ int main(int argc, char *argv[])
 
     feature ft = feature();
     fvector fisher = fvector();
-
-    vl_test();
 
     CommandLineParser parser( argc, argv, keys );
 
@@ -88,10 +142,10 @@ int main(int argc, char *argv[])
     matcher->match( descriptors1, descriptors2, matches );
 
     std::vector< DMatch > matches_aux;
-//    for(unsigned int i=0; i<matches.size() ; i++) {
-//        std::cout << matches[i].distance << std::endl;
-//        if(matches[i].distance<0.2) matches_aux.push_back(matches[i]);
-//    }
+    //    for(unsigned int i=0; i<matches.size() ; i++) {
+    //        std::cout << matches[i].distance << std::endl;
+    //        if(matches[i].distance<0.2) matches_aux.push_back(matches[i]);
+    //    }
 
     for(auto match : matches) {
         //std::cout << match.distance << std::endl;
@@ -127,6 +181,8 @@ int main(int argc, char *argv[])
     fisher.gmm_write(gmm);
 
     gmm = fisher.gmm_load();
+
+    load_files(ds_storage, "probes.txt");
 
     waitKey();
     return 0;
